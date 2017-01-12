@@ -51,30 +51,30 @@ public class SQLGenerator implements SQLQueryGenerator {
 	/**
 	 * Formatting template
 	 */
-	private static final String INDENT = "    ";
+	protected static String INDENT = "    ";
 
 	private static final String typeStrForSELECT = "%s AS %s";
 	private static final String typeSuffix = "QuestType";
 	private static final String langStrForSELECT = "%s AS %s";
 	private static final String langSuffix = "Lang";
 	
-	private static final String VIEW_NAME = "QVIEW%s";
-	private static final String VIEW_NAME_PREFIX = "QVIEW";
+	protected static String VIEW_NAME = "QVIEW%s";
+	protected static String VIEW_NAME_PREFIX = "QVIEW";
 
-	private final DBMetadata metadata;
-	private final SQLDialectAdapter sqladapter;
+	protected final DBMetadata metadata;
+	protected final SQLDialectAdapter sqladapter;
 
-	private final boolean distinctResultSet;
-	private final String replace1, replace2;
+	protected final boolean distinctResultSet;
+	protected final String replace1, replace2;
 
-	private boolean isDistinct = false;
-	private boolean isOrderBy = false;
+	protected boolean isDistinct = false;
+	protected boolean isOrderBy = false;
 	
-	private final SemanticIndexURIMap uriRefIds; // non-null in the Semantic Index mode
+	protected final SemanticIndexURIMap uriRefIds; // non-null in the Semantic Index mode
 	
-	private final DatatypeFactory dtfac = OBDADataFactoryImpl.getInstance().getDatatypeFactory();
+	protected final DatatypeFactory dtfac = OBDADataFactoryImpl.getInstance().getDatatypeFactory();
 	
-	private final ImmutableMap<ExpressionOperation, String> operations;
+	protected final ImmutableMap<ExpressionOperation, String> operations;
 
 	public SQLGenerator(DBMetadata metadata, SQLDialectAdapter sqladapter) {
 		this(metadata, sqladapter, false, true, null);
@@ -189,7 +189,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 		return distinctResultSet;
 	}
 
-	private boolean hasSelectDistinctStatement(DatalogProgram query) {
+	protected boolean hasSelectDistinctStatement(DatalogProgram query) {
 		boolean toReturn = false;
 		if (query.getQueryModifiers().hasModifiers()) {
 			toReturn = query.getQueryModifiers().isDistinct();
@@ -197,7 +197,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 		return toReturn;
 	}
 	
-	private boolean hasOrderByClause(DatalogProgram query) {
+	protected boolean hasOrderByClause(DatalogProgram query) {
 		boolean toReturn = false;
 		if (query.getQueryModifiers().hasModifiers()) {
 			final List<OrderCondition> conditions = query.getQueryModifiers().getSortConditions();
@@ -297,7 +297,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * Returns a string with boolean conditions formed with the boolean atoms
 	 * found in the atoms list.
 	 */
-	private Set<String> getBooleanConditionsString(List<Function> atoms, QueryAliasIndex index) {
+	protected Set<String> getBooleanConditionsString(List<Function> atoms, QueryAliasIndex index) {
 		Set<String> conditions = new LinkedHashSet<String>();
 		for (int atomidx = 0; atomidx < atoms.size(); atomidx++) {
 			Term innerAtom = atoms.get(atomidx);
@@ -316,7 +316,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	/***
 	 * Returns the SQL for an atom representing an SQL condition (booleans).
 	 */
-	private String getSQLCondition(Function atom, QueryAliasIndex index) {
+	protected String getSQLCondition(Function atom, QueryAliasIndex index) {
 		Predicate functionSymbol = atom.getFunctionSymbol();
 		if (atom.getArity() == 1) {
 			// For unary boolean operators, e.g., NOT, IS NULL, IS NOT NULL.
@@ -415,7 +415,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * 
 	 * @return
 	 */
-	private String getTableDefinitions(List<Function> atoms,
+	protected String getTableDefinitions(List<Function> atoms,
 			QueryAliasIndex index, boolean isTopLevel, boolean isLeftJoin,
 			String indent) {
 		/*
@@ -517,7 +517,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * QueryAliasIndex. If the atom is a Join or Left Join, it will call
 	 * getTableDefinitions on the nested term list.
 	 */
-	private String getTableDefinition(Function atom, QueryAliasIndex index, String indent) {
+	protected String getTableDefinition(Function atom, QueryAliasIndex index, String indent) {
 		if (atom.isOperation() || atom.isDataTypeFunction()) {
 			// These don't participate in the FROM clause
 			return "";
@@ -556,7 +556,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * The method assumes that no variable in this list (or nested ones) referes
 	 * to an upper level one.
 	 */
-	private String getConditionsString(List<Function> atoms,
+	protected String getConditionsString(List<Function> atoms,
 			QueryAliasIndex index, boolean processShared, String indent) {
 
 		Set<String> equalityConditions = new LinkedHashSet<>();
@@ -596,7 +596,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * @param atom
 	 * @return
 	 */
-	private Set<Variable> getVariableReferencesWithLeftJoin(Function atom) {
+	protected Set<Variable> getVariableReferencesWithLeftJoin(Function atom) {
 		
 		if (atom.isDataFunction()) {
 			Set<Variable> variables = new LinkedHashSet<>();
@@ -650,7 +650,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * x),B(x))
 	 * 
 	 */
-	private Set<String> getConditionsSharedVariablesAndConstants(
+	protected Set<String> getConditionsSharedVariablesAndConstants(
 			List<Function> atoms, QueryAliasIndex index, boolean processShared) {
 		Set<String> equalities = new LinkedHashSet<>();
 
@@ -703,7 +703,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 
 	
 	// return variable SQL data type
-	private int getVariableDataType (Term term) {
+	protected int getVariableDataType (Term term) {
 		Function f = (Function) term;
 		if (f.isDataTypeFunction()) {
 			Predicate p = f.getFunctionSymbol();
@@ -1147,7 +1147,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 		return toReturn;
 	}
 
-	private boolean isStringColType(Term term, QueryAliasIndex index) {
+	protected boolean isStringColType(Term term, QueryAliasIndex index) {
 		if (term instanceof Function) {
 			Function function = (Function) term;
 			if (function.getFunctionSymbol() instanceof URITemplatePredicate) {
@@ -1207,7 +1207,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 
 	private static final Pattern pQuotes = Pattern.compile("[\"`\\['][^\\.]*[\"`\\]']");
 	
-	private static String trimLiteral(String string) {
+	protected static String trimLiteral(String string) {
 		while (pQuotes.matcher(string).matches()) {
 			string = string.substring(1, string.length() - 1);
 		}
@@ -1476,7 +1476,7 @@ public class SQLGenerator implements SQLQueryGenerator {
 	 * @param constant
 	 * @return
 	 */
-	private String getSQLLexicalForm(ValueConstant constant) {
+	protected String getSQLLexicalForm(ValueConstant constant) {
 		switch (constant.getType()) {
 		case BNODE:
 		case LITERAL:

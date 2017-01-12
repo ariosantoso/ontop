@@ -30,6 +30,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class QuestQueryProcessor {
+
+	//arsa add
+	private final Map<ParsedQuery, DatalogProgram> reformulatedSQLCache = new ConcurrentHashMap<>();
+	//END OF arsa add
 	
 	private final Map<String, ParsedQuery> parsedQueryCache = new ConcurrentHashMap<>();
 	private final Map<ParsedQuery, List<String>> querySignatureCache = new ConcurrentHashMap<>();
@@ -314,4 +318,159 @@ public class QuestQueryProcessor {
 	public OntopBenchmark getBenchmarkObject() {
 	    return this.benchmarkObj;
 	}
+
+
+	//arsa add
+
+	/**
+	 * This method is similar to "public String getSQL(ParsedQuery pq)" except that 
+	 * it returns the DatalogProgram that is obtained from the SPARQL reformulation 
+	 * process (rewriting + unfolding). This method is implemented based on the 
+	 * implementation of "getSQL/1" in the develop branch on 11.01.2017.
+	 * 
+	 * Note that both "getSQL/1" and this method use DatalogProgram as the internal 
+	 * representation of the query that is being reformulated. However, before returning the 
+	 * reformulation result, the method "getSQL/1" translates the resulting (reformulated) 
+	 * DatalogProgram into a String of SQL Query, and this method simply skip that step.
+	 * 
+	 * @param pq
+	 * @return
+	 * @throws OBDAException
+	 */
+	public DatalogProgram reformulateSQL(ParsedQuery pq) throws OBDAException {
+		
+		//String cachedSQL = translatedSQLCache.get(pq);
+		DatalogProgram cachedDatalogProgram = reformulatedSQLCache.get(pq);
+		if (cachedDatalogProgram != null){
+		    // Davide> Benchmarking
+		    OntopBenchmark.Builder builder = new OntopBenchmark.Builder(0, 0);
+		    this.benchmarkObj = builder.build();
+		    return cachedDatalogProgram;
+		}
+		try {
+			// log.debug("Input query:\n{}", strquery);
+			
+			SparqlAlgebraToDatalogTranslator translator = new SparqlAlgebraToDatalogTranslator(unfolder.getUriTemplateMatcher(), uriMap);
+			SparqlQuery translation = translator.translate(pq);
+			DatalogProgram program = translation.getProgram();
+			log.debug("Datalog program translated from the SPARQL query: \n{}", program);
+			//System.out.println("OUT " + program);
+
+			SameAsRewriter sameAs = new SameAsRewriter(unfolder.getSameAsDataPredicatesAndClasses(), unfolder.getSameAsObjectPredicates());
+			program = sameAs.getSameAsRewriting(program);
+			//System.out.println("SAMEAS" + program);
+
+			log.debug("Replacing equivalences...");
+			DatalogProgram newprogramEq = OBDADataFactoryImpl.getInstance().getDatalogProgram(program.getQueryModifiers());
+			Predicate topLevelPredicate = null;
+			for (CQIE query : program.getRules()) {
+				// TODO: fix cloning
+				CQIE rule = query.clone();
+				// TODO: get rid of EQNormalizer
+				EQNormalizer.enforceEqualities(rule);
+
+				CQIE newquery = vocabularyValidator.replaceEquivalences(rule);
+				if (newquery.getHead().getFunctionSymbol().getName().equals(OBDAVocabulary.QUEST_QUERY))
+					topLevelPredicate = newquery.getHead().getFunctionSymbol();
+				newprogramEq.appendRule(newquery);
+			}
+
+			SPARQLQueryFlattener fl = new SPARQLQueryFlattener(newprogramEq);
+			List<CQIE> p = fl.flatten(newprogramEq.getRules(topLevelPredicate).get(0));
+			DatalogProgram newprogram = OBDADataFactoryImpl.getInstance().getDatalogProgram(program.getQueryModifiers(), p);
+
+			for (CQIE q : newprogram.getRules()) 
+				DatalogNormalizer.unfoldJoinTrees(q);
+			log.debug("Normalized program: \n{}", newprogram);
+
+			if (newprogram.getRules().size() < 1)
+				throw new OBDAException("Error, the translation of the query generated 0 rules. This is not possible for any SELECT query (other queries are not supported by the translator).");
+
+			log.debug("Start the rewriting process...");
+
+			for (CQIE cq : newprogram.getRules())
+				CQCUtilities.optimizeQueryWithSigmaRules(cq.getBody(), sigma);
+			
+			long startTime = System.currentTimeMillis();
+			
+			DatalogProgram programAfterRewriting = rewriter.rewrite(newprogram);
+			
+			long endTime = System.currentTimeMillis();
+			
+			long rewritingTime = endTime - startTime;
+			
+			log.debug("Start the partial evaluation process...");
+
+			startTime = System.currentTimeMillis();
+			DatalogProgram programAfterUnfolding = unfolder.unfold(programAfterRewriting);
+			
+			log.debug("Data atoms evaluated: \n{}", programAfterUnfolding);
+
+			List<CQIE> toRemove = new LinkedList<>();
+			for (CQIE rule : programAfterUnfolding.getRules()) {
+				Predicate headPredicate = rule.getHead().getFunctionSymbol();
+				if (!headPredicate.getName().equals(OBDAVocabulary.QUEST_QUERY)) {
+					toRemove.add(rule);
+				}
+			}
+			programAfterUnfolding.removeRules(toRemove);
+			log.debug("Irrelevant rules removed: \n{}", programAfterUnfolding);
+
+			ExpressionEvaluator evaluator = new ExpressionEvaluator(unfolder.getUriTemplateMatcher());
+			evaluator.evaluateExpressions(programAfterUnfolding);
+			
+			/*
+				UnionOfSqlQueries ucq = new UnionOfSqlQueries(questInstance.getUnfolder().getCQContainmentCheck());
+				for (CQIE cq : unfolding.getRules())
+					ucq.add(cq);
+				
+				List<CQIE> rules = new ArrayList<>(unfolding.getRules());
+				unfolding.removeRules(rules); 
+				
+				for (CQIE cq : ucq.asCQIE()) {
+					unfolding.appendRule(cq);
+				}
+				log.debug("CQC performed ({} rules): \n{}", unfolding.getRules().size(), unfolding);
+			 
+			 */
+
+			log.debug("Boolean expression evaluated: \n{}", programAfterUnfolding);
+			log.debug("Partial evaluation ended.");
+
+			querySignatureCache.put(pq, translation.getSignature());
+
+			/*
+			String sql;
+			
+			if (programAfterUnfolding.getRules().size() > 0) {
+				log.debug("Producing the SQL string...");
+				sql = datasourceQueryGenerator.generateSourceQuery(programAfterUnfolding, translation.getSignature());
+				log.debug("Resulting SQL: \n{}", sql);
+			}
+			else
+				sql = "";
+			*/
+			
+			long unfoldingTime = System.currentTimeMillis() - startTime;
+			//translatedSQLCache.put(pq, sql);
+			reformulatedSQLCache.put(pq, programAfterUnfolding);
+			
+			// Davide> Benchmarking
+			OntopBenchmark.Builder builder = new OntopBenchmark.Builder(unfoldingTime, rewritingTime);
+			builder.programAfterRewriting(programAfterRewriting).programAfterUnfolding(programAfterUnfolding);
+			this.benchmarkObj = builder.build();
+			
+			return programAfterUnfolding;
+		} 
+		catch (Exception e) {
+			log.debug(e.getMessage(), e);
+			e.printStackTrace();
+			OBDAException ex = new OBDAException("Error rewriting and unfolding into SQL\n" +  e.getMessage());
+			ex.setStackTrace(e.getStackTrace());
+			throw ex;
+		}
+	}
+	
+	//end of arsa add
+
 }

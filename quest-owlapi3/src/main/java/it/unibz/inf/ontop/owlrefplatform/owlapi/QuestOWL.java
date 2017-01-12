@@ -85,7 +85,7 @@ public class QuestOWL extends OWLReasonerBase implements AutoCloseable {
 
 	private QuestPreferences preferences = new QuestPreferences();
 
-	private Quest questInstance = null;
+	protected Quest questInstance = null;
 
 	private static Logger log = LoggerFactory.getLogger(QuestOWL.class);
 
