@@ -337,7 +337,7 @@ public class QuestQueryProcessor {
 	 * @return
 	 * @throws OBDAException
 	 */
-	public DatalogProgram reformulateSQL(ParsedQuery pq) throws OBDAException {
+	public DatalogProgram reformulateSPARQL(ParsedQuery pq) throws OBDAException {
 		
 		//String cachedSQL = translatedSQLCache.get(pq);
 		DatalogProgram cachedDatalogProgram = reformulatedSQLCache.get(pq);
