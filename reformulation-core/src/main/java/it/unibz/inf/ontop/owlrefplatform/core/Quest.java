@@ -831,4 +831,10 @@ public class Quest implements Serializable {
 		return engine;
 	}
 	
+	//arsa add for OnProm
+	public boolean isSqlGenerateReplace(){
+		return sqlGenerateReplace;
+	}
+	//END OF arsa add for OnProm
+
 }

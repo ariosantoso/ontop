@@ -29,8 +29,10 @@ import it.unibz.inf.ontop.owlapi.OWLAPIABoxIterator;
 import it.unibz.inf.ontop.owlapi.OWLAPITranslatorUtility;
 import it.unibz.inf.ontop.owlrefplatform.core.*;
 import it.unibz.inf.ontop.owlrefplatform.core.abox.QuestMaterializer;
+import it.unibz.inf.ontop.owlrefplatform.core.abox.SemanticIndexURIMap;
 import it.unibz.inf.ontop.owlrefplatform.core.mappingprocessing.TMappingExclusionConfig;
 import it.unibz.inf.ontop.utils.VersionInfo;
+import it.unibz.inf.ontop.sql.DBMetadata;
 import it.unibz.inf.ontop.sql.ImplicitDBConstraintsReader;
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.reasoner.*;
@@ -85,7 +87,7 @@ public class QuestOWL extends OWLReasonerBase implements AutoCloseable {
 
 	private QuestPreferences preferences = new QuestPreferences();
 
-	protected Quest questInstance = null;
+	private Quest questInstance = null;
 
 	private static Logger log = LoggerFactory.getLogger(QuestOWL.class);
 
@@ -856,5 +858,29 @@ public class QuestOWL extends OWLReasonerBase implements AutoCloseable {
 	public void close() throws Exception {
 		dispose();
 	}
+
+    
+    //arsa add for OnProm
+    protected DBMetadata getDBMetadata(){
+    	return this.questInstance.getMetaData();
+    }
+
+    protected SemanticIndexURIMap getUriMap() {
+    	return this.questInstance.getUriMap();
+	}
+    
+	protected boolean hasDistinctResultSet() {
+		return this.questInstance.hasDistinctResultSet();		
+	}    
+	
+	protected boolean isSqlGenerateReplace(){
+		return this.questInstance.isSqlGenerateReplace();		
+	}    
+	
+	protected QuestQueryProcessor getQueryProcessor(){
+		
+		return this.questInstance.getEngine();
+	}
+	//END OF arsa add for OnProm
 
 }

@@ -51,30 +51,31 @@ public class SQLGenerator implements SQLQueryGenerator {
 	/**
 	 * Formatting template
 	 */
-	protected static String INDENT = "    ";
+	private static String INDENT = "    ";
 
 	private static final String typeStrForSELECT = "%s AS %s";
 	private static final String typeSuffix = "QuestType";
 	private static final String langStrForSELECT = "%s AS %s";
 	private static final String langSuffix = "Lang";
 	
-	protected static String VIEW_NAME = "QVIEW%s";
-	protected static String VIEW_NAME_PREFIX = "QVIEW";
+	private static String VIEW_NAME = "QVIEW%s";
+	private static String VIEW_NAME_PREFIX = "QVIEW";
 
-	protected final DBMetadata metadata;
-	protected final SQLDialectAdapter sqladapter;
+	private final DBMetadata metadata;
+	private final SQLDialectAdapter sqladapter;
 
-	protected final boolean distinctResultSet;
-	protected final String replace1, replace2;
+	private final boolean distinctResultSet;
+	private final String replace1, replace2;
 
-	protected boolean isDistinct = false;
-	protected boolean isOrderBy = false;
+	private boolean isDistinct = false;
+
+	private boolean isOrderBy = false;
 	
-	protected final SemanticIndexURIMap uriRefIds; // non-null in the Semantic Index mode
+	private final SemanticIndexURIMap uriRefIds; // non-null in the Semantic Index mode
 	
-	protected final DatatypeFactory dtfac = OBDADataFactoryImpl.getInstance().getDatatypeFactory();
+	private final DatatypeFactory dtfac = OBDADataFactoryImpl.getInstance().getDatatypeFactory();
 	
-	protected final ImmutableMap<ExpressionOperation, String> operations;
+	private final ImmutableMap<ExpressionOperation, String> operations;
 
 	public SQLGenerator(DBMetadata metadata, SQLDialectAdapter sqladapter) {
 		this(metadata, sqladapter, false, true, null);
@@ -1631,4 +1632,41 @@ public class SQLGenerator implements SQLQueryGenerator {
 			return new QualifiedAttributeID(viewName, columnname).getSQLRendering();
 		}
 	}
+
+
+
+	//arsa add for OnProm
+	
+	public static String getVIEW_NAME() {
+		return VIEW_NAME;
+	}
+
+	public static void setVIEW_NAME(String viewName) {
+		VIEW_NAME = viewName;
+	}
+
+	public static String getVIEW_NAME_PREFIX() {
+		return VIEW_NAME_PREFIX;
+	}
+
+	public static void setVIEW_NAME_PREFIX(String viewNamePrefix) {
+		VIEW_NAME_PREFIX = viewNamePrefix;
+	}
+
+	protected DBMetadata getMetadata() {
+		return metadata;
+	}
+
+	
+	protected SQLDialectAdapter getSqladapter() {
+		return sqladapter;
+	}
+
+	protected SemanticIndexURIMap getSemanticIndexURIMap() {
+		return uriRefIds;
+	}
+
+	//END OF arsa add for OnProm
+
+
 }
